@@ -1,17 +1,19 @@
 'use client';
 
 import { motion } from 'motion/react';
-import { Database, ChevronRight } from 'lucide-react';
+import { Database, ChevronRight, FileText, Trash2 } from 'lucide-react';
 
 interface StoreCardProps {
   displayName: string;
   name: string;
   createTime?: string;
+  documentCount?: number;
   index?: number;
   onClick?: () => void;
+  onDelete?: () => void;
 }
 
-export default function StoreCard({ displayName, name, createTime, index = 0, onClick }: StoreCardProps) {
+export default function StoreCard({ displayName, name, createTime, documentCount, index = 0, onClick, onDelete }: StoreCardProps) {
   const shortName = name.replace('fileSearchStores/', '');
 
   return (
@@ -26,7 +28,17 @@ export default function StoreCard({ displayName, name, createTime, index = 0, on
         <div className="w-9 h-9 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-subtle)] flex items-center justify-center group-hover:border-[var(--amber-dim)] group-hover:bg-[var(--amber-glow)] transition-colors duration-200">
           <Database size={16} className="text-[var(--text-muted)] group-hover:text-[var(--amber)] transition-colors duration-200" />
         </div>
-        <ChevronRight size={16} className="text-[var(--text-muted)] opacity-0 group-hover:opacity-100 group-hover:text-[var(--amber)] transition-all duration-200 translate-x-0 group-hover:translate-x-0.5" />
+        <div className="flex items-center gap-1">
+          {onDelete && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="p-1.5 rounded-md text-[var(--text-muted)] opacity-0 group-hover:opacity-100 hover:text-red-400 hover:bg-red-400/10 transition-all duration-200 cursor-pointer"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+          <ChevronRight size={16} className="text-[var(--text-muted)] opacity-0 group-hover:opacity-100 group-hover:text-[var(--amber)] transition-all duration-200 translate-x-0 group-hover:translate-x-0.5" />
+        </div>
       </div>
 
       <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1 truncate">
@@ -36,15 +48,23 @@ export default function StoreCard({ displayName, name, createTime, index = 0, on
         {shortName}
       </p>
 
-      {createTime && (
-        <p className="text-[11px] text-[var(--text-muted)]">
-          {new Date(createTime).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-          })}
-        </p>
-      )}
+      <div className="flex items-center justify-between">
+        {documentCount !== undefined && (
+          <span className="inline-flex items-center gap-1 text-[11px] text-[var(--text-muted)]">
+            <FileText size={11} />
+            {documentCount} {documentCount === 1 ? 'document' : 'documents'}
+          </span>
+        )}
+        {createTime && (
+          <p className="text-[11px] text-[var(--text-muted)]">
+            {new Date(createTime).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            })}
+          </p>
+        )}
+      </div>
     </motion.div>
   );
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getStore, deleteStore } from '../../../../lib/client';
+import { getStore, deleteStore, invalidateCache } from '../../../../lib/client';
 
 export async function GET(
   _request: Request,
@@ -27,6 +27,7 @@ export async function DELETE(
     const force = url.searchParams.get('force') === 'true';
 
     await deleteStore(`fileSearchStores/${id}`, force);
+    invalidateCache();
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(

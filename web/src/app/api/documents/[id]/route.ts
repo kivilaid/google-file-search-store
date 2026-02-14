@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { deleteDocument } from '../../../../lib/client';
+import { deleteDocument, invalidateCache } from '../../../../lib/client';
 
 export async function DELETE(
   _request: Request,
@@ -8,6 +8,7 @@ export async function DELETE(
   try {
     const { id } = await params;
     await deleteDocument(`fileSearchStoreDocuments/${id}`);
+    invalidateCache();
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(

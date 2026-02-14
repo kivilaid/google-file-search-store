@@ -2,11 +2,12 @@
 
 import { useEffect, useState, useCallback, use } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Trash2 } from 'lucide-react';
 import DocumentRow from '../../../../components/DocumentRow';
 import FileUploadZone from '../../../../components/FileUploadZone';
 import MetadataEditor from '../../../../components/MetadataEditor';
 import LoadingSkeleton from '../../../../components/LoadingSkeleton';
+import Modal from '../../../../components/Modal';
 
 interface Document {
   name: string;
@@ -25,6 +26,8 @@ export default function DocumentsPage({ params }: { params: Promise<{ id: string
   const [maxTokens, setMaxTokens] = useState('');
   const [overlap, setOverlap] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deletingStore, setDeletingStore] = useState(false);
 
   const fetchDocuments = useCallback(async () => {
     try {
@@ -67,6 +70,19 @@ export default function DocumentsPage({ params }: { params: Promise<{ id: string
     }
   };
 
+  const handleDeleteStore = async () => {
+    if (deletingStore) return;
+    setDeletingStore(true);
+    try {
+      const res = await fetch(`/api/stores/${id}?force=true`, { method: 'DELETE' });
+      if (res.ok) {
+        router.push('/stores');
+      }
+    } finally {
+      setDeletingStore(false);
+    }
+  };
+
   const handleDelete = async (docName: string) => {
     const docId = docName.split('/').pop();
     if (!docId) return;
@@ -91,12 +107,20 @@ export default function DocumentsPage({ params }: { params: Promise<{ id: string
           <h1 className="text-xl font-semibold text-[var(--text-primary)]">Documents</h1>
           <p className="text-xs font-mono text-[var(--text-muted)] mt-0.5">{id}</p>
         </div>
-        <button
-          onClick={() => { setLoading(true); fetchDocuments(); }}
-          className="p-2 rounded-lg text-[var(--text-muted)] hover:text-[var(--amber)] hover:bg-[var(--amber-glow)] transition-colors cursor-pointer"
-        >
-          <RefreshCw size={16} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => { setLoading(true); fetchDocuments(); }}
+            className="p-2 rounded-lg text-[var(--text-muted)] hover:text-[var(--amber)] hover:bg-[var(--amber-glow)] transition-colors cursor-pointer"
+          >
+            <RefreshCw size={16} />
+          </button>
+          <button
+            onClick={() => setDeleteModalOpen(true)}
+            className="p-2 rounded-lg text-[var(--text-muted)] hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
       </div>
 
       {/* Upload section */}
@@ -195,6 +219,33 @@ export default function DocumentsPage({ params }: { params: Promise<{ id: string
           </table>
         </div>
       )}
+
+      <Modal
+        open={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        title="Delete Store"
+        actions={
+          <>
+            <button
+              onClick={() => setDeleteModalOpen(false)}
+              className="px-4 py-2 rounded-lg text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDeleteStore}
+              disabled={deletingStore}
+              className="px-4 py-2 rounded-lg text-sm font-semibold bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            >
+              {deletingStore ? 'Deleting...' : 'Delete Store'}
+            </button>
+          </>
+        }
+      >
+        <p className="text-sm text-[var(--text-secondary)]">
+          Are you sure you want to delete this store and all its documents? This action cannot be undone.
+        </p>
+      </Modal>
     </div>
   );
 }

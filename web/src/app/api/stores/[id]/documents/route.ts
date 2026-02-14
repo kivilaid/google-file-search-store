@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { writeFile, unlink } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { uploadDocument, listDocuments } from '../../../../../lib/client';
+import { uploadDocument, listDocuments, invalidateCache } from '../../../../../lib/client';
 
 export async function POST(
   request: Request,
@@ -42,6 +42,7 @@ export async function POST(
       metadata: metadataStr ? JSON.parse(metadataStr) : undefined,
     });
 
+    invalidateCache();
     return NextResponse.json(document);
   } catch (error) {
     return NextResponse.json(

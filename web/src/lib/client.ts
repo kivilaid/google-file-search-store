@@ -38,10 +38,47 @@ export interface QueryResult {
 // Client
 const DEFAULT_MODEL = 'gemini-3-flash-preview';
 
+let _ai: GoogleGenAI | null = null;
+
 function getAI(): GoogleGenAI {
+  if (_ai) return _ai;
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY environment variable is required');
-  return new GoogleGenAI({ apiKey });
+  _ai = new GoogleGenAI({ apiKey });
+  return _ai;
+}
+
+// Simple in-memory cache
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+const cache = new Map<string, CacheEntry<unknown>>();
+const CACHE_TTL = 30_000; // 30 seconds
+
+function getCached<T>(key: string): T | null {
+  const entry = cache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > CACHE_TTL) {
+    cache.delete(key);
+    return null;
+  }
+  return entry.data as T;
+}
+
+function setCache<T>(key: string, data: T): void {
+  cache.set(key, { data, timestamp: Date.now() });
+}
+
+export function invalidateCache(prefix?: string) {
+  if (!prefix) {
+    cache.clear();
+    return;
+  }
+  for (const key of cache.keys()) {
+    if (key.startsWith(prefix)) cache.delete(key);
+  }
 }
 
 async function pollOperation(ai: GoogleGenAI, operation: any): Promise<any> {
@@ -61,13 +98,35 @@ export async function createStore(displayName: string) {
   return ai.fileSearchStores.create({ config: { displayName } });
 }
 
-export async function listStores() {
+export async function listStores({ includeDocumentCounts = false } = {}) {
+  const cacheKey = `stores:list:${includeDocumentCounts}`;
+  const cached = getCached<any[]>(cacheKey);
+  if (cached) return cached;
+
   const ai = getAI();
   const stores = [];
   const pager = await ai.fileSearchStores.list({});
   for await (const store of pager) {
     stores.push(store);
   }
+
+  if (includeDocumentCounts) {
+    const counts = await Promise.all(
+      stores.map(async (store) => {
+        try {
+          const docs = await listDocuments(store.name!);
+          return docs.length;
+        } catch {
+          return 0;
+        }
+      }),
+    );
+    for (let i = 0; i < stores.length; i++) {
+      (stores[i] as any).documentCount = counts[i];
+    }
+  }
+
+  setCache(cacheKey, stores);
   return stores;
 }
 
@@ -112,12 +171,17 @@ export async function uploadDocument(options: UploadDocumentOptions) {
 }
 
 export async function listDocuments(storeNameOrId: string) {
+  const cacheKey = `docs:${storeNameOrId}`;
+  const cached = getCached<any[]>(cacheKey);
+  if (cached) return cached;
+
   const ai = getAI();
   const docs = [];
   const pager = await ai.fileSearchStores.documents.list({ parent: storeNameOrId });
   for await (const doc of pager) {
     docs.push(doc);
   }
+  setCache(cacheKey, docs);
   return docs;
 }
 

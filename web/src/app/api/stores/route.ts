@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createStore, listStores } from '../../../lib/client';
+import { createStore, listStores, invalidateCache } from '../../../lib/client';
 
 export async function POST(request: Request) {
   try {
@@ -11,6 +11,7 @@ export async function POST(request: Request) {
     }
 
     const store = await createStore(displayName);
+    invalidateCache('stores:');
     return NextResponse.json(store);
   } catch (error) {
     return NextResponse.json(
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
 
 export async function GET() {
   try {
-    const stores = await listStores();
+    const stores = await listStores({ includeDocumentCounts: true });
     return NextResponse.json({ stores: stores ?? [] });
   } catch (error) {
     return NextResponse.json(
