@@ -63,7 +63,12 @@ export async function createStore(displayName: string) {
 
 export async function listStores() {
   const ai = getAI();
-  return ai.fileSearchStores.list({});
+  const stores = [];
+  const pager = await ai.fileSearchStores.list({});
+  for await (const store of pager) {
+    stores.push(store);
+  }
+  return stores;
 }
 
 export async function getStore(name: string) {
@@ -108,7 +113,12 @@ export async function uploadDocument(options: UploadDocumentOptions) {
 
 export async function listDocuments(storeNameOrId: string) {
   const ai = getAI();
-  return ai.fileSearchStores.documents.list({ parent: storeNameOrId });
+  const docs = [];
+  const pager = await ai.fileSearchStores.documents.list({ parent: storeNameOrId });
+  for await (const doc of pager) {
+    docs.push(doc);
+  }
+  return docs;
 }
 
 export async function deleteDocument(name: string) {

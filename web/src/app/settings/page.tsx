@@ -21,7 +21,7 @@ export default function SettingsPage() {
   const apiKeyDisplay = maskKey(typeof window !== 'undefined' ? undefined : undefined);
 
   return (
-    <div className="max-w-xl">
+    <div className="max-w-2xl">
       <div className="mb-8">
         <h1 className="text-xl font-semibold text-[var(--text-primary)]">Settings</h1>
         <p className="text-sm text-[var(--text-muted)] mt-1">Configuration and status</p>

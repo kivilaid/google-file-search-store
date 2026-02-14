@@ -25,9 +25,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${dmSans.variable} ${jetbrainsMono.variable}`}>
-      <body className="font-sans antialiased">
+      <body className="font-sans antialiased flex">
         <Sidebar />
-        <main className="ml-[240px] min-h-screen p-8">
+        <main className="flex-1 min-h-screen p-8" style={{ marginLeft: '240px' }}>
           {children}
         </main>
       </body>

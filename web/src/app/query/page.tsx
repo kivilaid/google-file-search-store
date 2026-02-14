@@ -79,7 +79,7 @@ export default function QueryPage() {
   };
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-4xl">
       <div className="mb-8">
         <h1 className="text-xl font-semibold text-[var(--text-primary)]">Query</h1>
         <p className="text-sm text-[var(--text-muted)] mt-1">
