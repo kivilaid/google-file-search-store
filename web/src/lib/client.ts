@@ -20,6 +20,19 @@ export interface QueryOptions {
   query: string;
   model?: string;
   metadataFilter?: string;
+  // File search
+  retrievalTopK?: number;
+  // Generation config
+  systemInstruction?: string;
+  temperature?: number;
+  topP?: number;
+  topK?: number;
+  maxOutputTokens?: number;
+  stopSequences?: string[];
+  presencePenalty?: number;
+  frequencyPenalty?: number;
+  seed?: number;
+  responseMimeType?: string;
 }
 
 export interface Citation {
@@ -194,19 +207,30 @@ export async function queryStore(options: QueryOptions): Promise<QueryResult> {
   const ai = getAI();
   const model = options.model ?? DEFAULT_MODEL;
 
+  const fileSearchConfig: Record<string, unknown> = {
+    fileSearchStoreNames: options.storeNames,
+  };
+  if (options.metadataFilter) fileSearchConfig.metadataFilter = options.metadataFilter;
+  if (options.retrievalTopK != null) fileSearchConfig.topK = options.retrievalTopK;
+
+  const config: Record<string, unknown> = {
+    tools: [{ fileSearch: fileSearchConfig }],
+  };
+  if (options.systemInstruction) config.systemInstruction = options.systemInstruction;
+  if (options.temperature != null) config.temperature = options.temperature;
+  if (options.topP != null) config.topP = options.topP;
+  if (options.topK != null) config.topK = options.topK;
+  if (options.maxOutputTokens != null) config.maxOutputTokens = options.maxOutputTokens;
+  if (options.stopSequences?.length) config.stopSequences = options.stopSequences;
+  if (options.presencePenalty != null) config.presencePenalty = options.presencePenalty;
+  if (options.frequencyPenalty != null) config.frequencyPenalty = options.frequencyPenalty;
+  if (options.seed != null) config.seed = options.seed;
+  if (options.responseMimeType) config.responseMimeType = options.responseMimeType;
+
   const response = await ai.models.generateContent({
     model,
     contents: options.query,
-    config: {
-      tools: [
-        {
-          fileSearch: {
-            fileSearchStoreNames: options.storeNames,
-            ...(options.metadataFilter ? { metadataFilter: options.metadataFilter } : {}),
-          },
-        },
-      ],
-    },
+    config,
   });
 
   const text = response.text ?? '';
