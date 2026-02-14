@@ -1,0 +1,36 @@
+{
+  "name": "google-file-search-store",
+  "version": "0.1.0",
+  "description": "TypeScript library and CLI for Google Gemini File Search Store API",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "gfss": "dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/cli/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "gemini",
+    "google",
+    "genai",
+    "file-search",
+    "rag"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@google/genai": "^1.41.0",
+    "commander": "^14.0.3",
+    "dotenv": "^17.3.1",
+    "mime-types": "^3.0.2"
+  },
+  "devDependencies": {
+    "@types/mime-types": "^3.0.1",
+    "@types/node": "^25.2.3",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
