@@ -25,10 +25,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${dmSans.variable} ${jetbrainsMono.variable}`}>
-      <body className="font-sans antialiased flex">
+      <body className="font-sans antialiased flex bg-[var(--bg-primary)]">
         <Sidebar />
         <main className="flex-1 min-h-screen p-8" style={{ marginLeft: '240px' }}>
-          {children}
+          <div className="max-w-7xl mx-auto">
+            {children}
+          </div>
         </main>
       </body>
     </html>

@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, History } from 'lucide-react';
 import QueryInput from '../../components/QueryInput';
 import CitationCard from '../../components/CitationCard';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
+import QueryHistory from '../../components/QueryHistory';
 
 interface Store {
   name: string;
@@ -22,6 +23,13 @@ interface Citation {
 interface QueryResult {
   text: string;
   citations: Citation[];
+}
+
+interface QueryHistoryItem {
+  id: string;
+  query: string;
+  timestamp: string;
+  storeNames?: string[];
 }
 
 const MODELS = [
@@ -61,6 +69,8 @@ export default function QueryPage() {
   const [result, setResult] = useState<QueryResult | null>(null);
   const [storesLoading, setStoresLoading] = useState(true);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [queryHistory, setQueryHistory] = useState<QueryHistoryItem[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
 
   // Advanced parameters
   const [systemInstruction, setSystemInstruction] = useState('');
@@ -81,6 +91,16 @@ export default function QueryPage() {
       .then((data) => setStores(data.stores ?? []))
       .catch(() => {})
       .finally(() => setStoresLoading(false));
+
+    // Load query history from localStorage
+    const savedHistory = localStorage.getItem('queryHistory');
+    if (savedHistory) {
+      try {
+        setQueryHistory(JSON.parse(savedHistory));
+      } catch {
+        // ignore
+      }
+    }
   }, []);
 
   const toggleStore = useCallback((name: string) => {
@@ -92,10 +112,29 @@ export default function QueryPage() {
     });
   }, []);
 
+  const saveToHistory = useCallback(
+    (query: string) => {
+      const historyItem: QueryHistoryItem = {
+        id: Date.now().toString(),
+        query,
+        timestamp: new Date().toISOString(),
+        storeNames: Array.from(selectedStores),
+      };
+
+      setQueryHistory((prev) => {
+        const updated = [historyItem, ...prev].slice(0, 10); // Keep last 10 queries
+        localStorage.setItem('queryHistory', JSON.stringify(updated));
+        return updated;
+      });
+    },
+    [selectedStores]
+  );
+
   const handleQuery = async (query: string) => {
     if (selectedStores.size === 0) return;
     setLoading(true);
     setResult(null);
+    saveToHistory(query);
     try {
       const payload: Record<string, unknown> = {
         storeNames: Array.from(selectedStores),
@@ -131,17 +170,39 @@ export default function QueryPage() {
     }
   };
 
+  const handleHistorySelect = useCallback(
+    (query: string) => {
+      handleQuery(query);
+      setShowHistory(false);
+    },
+    [handleQuery]
+  );
+
   return (
-    <div className="max-w-4xl">
+    <div className="max-w-5xl">
       <div className="mb-8">
-        <h1 className="text-xl font-semibold text-[var(--text-primary)]">Query</h1>
-        <p className="text-sm text-[var(--text-muted)] mt-1">
-          Search across your document stores with AI
-        </p>
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-xl font-semibold text-[var(--text-primary)]">Query</h1>
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all cursor-pointer ${
+              showHistory
+                ? 'bg-[var(--amber-glow)] text-[var(--amber)] border border-[var(--amber)]'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)]'
+            }`}
+          >
+            <History size={14} />
+            History
+          </button>
+        </div>
+        <p className="text-sm text-[var(--text-muted)]">Search across your document stores with AI</p>
       </div>
 
-      {/* Store selection */}
-      <div className="mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+
+          {/* Store selection */}
+          <div>
         <ParamLabel
           label="Select Stores"
           description="Choose one or more stores to search. The model will retrieve relevant chunks from all selected stores."
@@ -173,10 +234,10 @@ export default function QueryPage() {
             })}
           </div>
         )}
-      </div>
+          </div>
 
-      {/* Model + filter row */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
+          {/* Model + filter row */}
+          <div className="grid grid-cols-2 gap-4">
         <div>
           <ParamLabel
             label="Model"
@@ -207,10 +268,10 @@ export default function QueryPage() {
             className={monoInputClass}
           />
         </div>
-      </div>
+          </div>
 
-      {/* Advanced options */}
-      <div className="mb-6">
+          {/* Advanced options */}
+          <div>
         <button
           onClick={() => setAdvancedOpen(!advancedOpen)}
           className="flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer mb-4"
@@ -422,57 +483,64 @@ export default function QueryPage() {
             </div>
           </div>
         )}
-      </div>
+          </div>
 
-      {/* Query input */}
-      <div className="mb-8">
+          {/* Query input */}
+          <div>
         <QueryInput onSubmit={handleQuery} loading={loading} />
         {selectedStores.size === 0 && (
           <p className="text-xs text-[var(--text-muted)] mt-2">Select at least one store to query.</p>
         )}
-      </div>
+          </div>
 
-      {/* Results */}
-      {loading && (
-        <div className="space-y-3">
-          <LoadingSkeleton variant="text" count={1} />
-          <LoadingSkeleton variant="card" count={2} />
-        </div>
-      )}
+          {/* Results */}
+          {loading && (
+            <div className="space-y-3">
+              <LoadingSkeleton variant="text" count={1} />
+              <LoadingSkeleton variant="card" count={2} />
+            </div>
+          )}
 
-      {result && (
-        <div className="space-y-6">
-          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5">
+          {result && (
+            <div className="space-y-6">
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5">
             <h3 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-3">
               Answer
             </h3>
-            <div className="text-sm text-[var(--text-primary)] leading-relaxed whitespace-pre-wrap">
-              {result.text}
-            </div>
-          </div>
-
-          {result.citations.length > 0 && (
-            <div>
-              <h3 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-3">
-                Citations ({result.citations.length})
-              </h3>
-              <div className="space-y-2">
-                {result.citations.map((c, i) => (
-                  <CitationCard
-                    key={i}
-                    index={i + 1}
-                    title={c.title}
-                    uri={c.uri}
-                    snippet={c.snippet}
-                    startIndex={c.startIndex}
-                    endIndex={c.endIndex}
-                  />
-                ))}
+                <div className="text-sm text-[var(--text-primary)] leading-relaxed whitespace-pre-wrap">
+                  {result.text}
+                </div>
               </div>
+
+              {result.citations.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-3">
+                    Citations ({result.citations.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {result.citations.map((c, i) => (
+                      <CitationCard
+                        key={i}
+                        index={i + 1}
+                        title={c.title}
+                        uri={c.uri}
+                        snippet={c.snippet}
+                        startIndex={c.startIndex}
+                        endIndex={c.endIndex}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
-      )}
+
+        {/* Query history sidebar */}
+        <div className={`lg:col-span-1 ${showHistory ? 'block' : 'hidden lg:block'}`}>
+          <QueryHistory queries={queryHistory} onQuerySelect={handleHistorySelect} />
+        </div>
+      </div>
     </div>
   );
 }

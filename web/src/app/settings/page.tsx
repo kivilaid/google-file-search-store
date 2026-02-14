@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Key, Cpu, ExternalLink } from 'lucide-react';
+import { Key, Cpu, ExternalLink, Info } from 'lucide-react';
+import UsageStats from '../../components/UsageStats';
 
 const MODELS = [
   { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash' },
@@ -19,6 +20,14 @@ export default function SettingsPage() {
 
   // API key is server-side only; we show a masked placeholder
   const apiKeyDisplay = maskKey(typeof window !== 'undefined' ? undefined : undefined);
+
+  // Mock usage stats - in a real app, this would come from an API
+  const usageStats = {
+    apiCalls: 1247,
+    apiCallsChange: 12,
+    tokensUsed: 847000,
+    tokensChange: 8,
+  };
 
   return (
     <div className="max-w-2xl">
@@ -69,7 +78,25 @@ export default function SettingsPage() {
               </option>
             ))}
           </select>
+          <div className="mt-4 p-4 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-subtle)]">
+            <div className="flex items-start gap-3">
+              <Info size={14} className="text-[var(--amber)] mt-0.5 shrink-0" />
+              <div className="text-xs text-[var(--text-secondary)] leading-relaxed space-y-1">
+                <div><strong className="text-[var(--text-primary)]">Context:</strong> 32K tokens</div>
+                <div><strong className="text-[var(--text-primary)]">Speed:</strong> ~850ms avg response</div>
+                <div><strong className="text-[var(--text-primary)]">Best for:</strong> Fast queries, summaries</div>
+              </div>
+            </div>
+          </div>
         </div>
+
+        {/* Usage statistics */}
+        <UsageStats
+          apiCalls={usageStats.apiCalls}
+          apiCallsChange={usageStats.apiCallsChange}
+          tokensUsed={usageStats.tokensUsed}
+          tokensChange={usageStats.tokensChange}
+        />
 
         {/* Documentation links */}
         <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5">
