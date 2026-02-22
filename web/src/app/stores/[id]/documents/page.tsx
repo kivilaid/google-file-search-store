@@ -14,6 +14,10 @@ interface Document {
   displayName: string;
   state?: string;
   createTime?: string;
+  sizeBytes?: string;
+  mimeType?: string;
+  customMetadata?: Array<{ key: string; stringValue: string }>;
+  updateTime?: string;
 }
 
 export default function DocumentsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -198,9 +202,15 @@ export default function DocumentsPage({ params }: { params: Promise<{ id: string
                   Status
                 </th>
                 <th className="text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider py-3 px-4">
+                  Type
+                </th>
+                <th className="text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider py-3 px-4">
+                  Size
+                </th>
+                <th className="text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider py-3 px-4">
                   Created
                 </th>
-                <th className="w-12" />
+                <th className="w-16" />
               </tr>
             </thead>
             <tbody>
@@ -211,6 +221,10 @@ export default function DocumentsPage({ params }: { params: Promise<{ id: string
                   name={doc.name}
                   state={doc.state}
                   createTime={doc.createTime}
+                  sizeBytes={doc.sizeBytes}
+                  mimeType={doc.mimeType}
+                  customMetadata={doc.customMetadata}
+                  updateTime={doc.updateTime}
                   index={i}
                   onDelete={() => handleDelete(doc.name)}
                 />
