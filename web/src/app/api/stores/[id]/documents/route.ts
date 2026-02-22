@@ -39,7 +39,12 @@ export async function POST(
               maxOverlapTokens: maxOverlapTokens ? parseInt(maxOverlapTokens, 10) : undefined,
             }
           : undefined,
-      metadata: metadataStr ? JSON.parse(metadataStr) : undefined,
+      metadata: metadataStr
+        ? Object.entries(JSON.parse(metadataStr)).map(([key, value]) => ({
+            key,
+            ...(typeof value === 'number' ? { numericValue: value } : { stringValue: String(value) }),
+          }))
+        : undefined,
     });
 
     invalidateCache();
