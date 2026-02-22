@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { ChevronDown, History } from 'lucide-react';
 import QueryInput from '../../components/QueryInput';
 import CitationCard from '../../components/CitationCard';
@@ -80,7 +81,7 @@ export default function QueryPage() {
   const [showHistory, setShowHistory] = useState(false);
 
   // Advanced parameters
-  const [systemInstruction, setSystemInstruction] = useState('');
+  const [systemInstruction, setSystemInstruction] = useState('Answer questions ONLY based on the retrieved document context from the file search store. If the documents don\'t contain enough information to answer, say so clearly. Do NOT use your general knowledge or training data. Always cite which document your answer comes from.');
   const [retrievalTopK, setRetrievalTopK] = useState('');
   const [temperature, setTemperature] = useState('');
   const [topP, setTopP] = useState('');
@@ -533,8 +534,8 @@ export default function QueryPage() {
             <h3 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-3">
               Answer
             </h3>
-                <div className="text-sm text-[var(--text-primary)] leading-relaxed whitespace-pre-wrap">
-                  {result.text}
+                <div className="text-sm text-[var(--text-primary)] leading-relaxed prose prose-invert prose-sm max-w-none prose-p:my-2 prose-headings:text-[var(--text-primary)] prose-strong:text-[var(--text-primary)] prose-a:text-[var(--amber)] prose-code:text-[var(--amber)] prose-code:bg-[var(--bg-elevated)] prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-li:my-0.5">
+                  <ReactMarkdown>{result.text}</ReactMarkdown>
                 </div>
               </div>
 
