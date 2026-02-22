@@ -30,6 +30,7 @@ export async function POST(request: Request) {
       frequencyPenalty: rest.frequencyPenalty ?? undefined,
       seed: rest.seed ?? undefined,
       responseMimeType: rest.responseMimeType ?? undefined,
+      thinkingLevel: rest.thinkingLevel ?? undefined,
     });
 
     return NextResponse.json({

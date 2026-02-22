@@ -33,6 +33,7 @@ export interface QueryOptions {
   frequencyPenalty?: number;
   seed?: number;
   responseMimeType?: string;
+  thinkingLevel?: string;
 }
 
 export interface Citation {
@@ -226,6 +227,7 @@ export async function queryStore(options: QueryOptions): Promise<QueryResult> {
   if (options.frequencyPenalty != null) config.frequencyPenalty = options.frequencyPenalty;
   if (options.seed != null) config.seed = options.seed;
   if (options.responseMimeType) config.responseMimeType = options.responseMimeType;
+  if (options.thinkingLevel) config.thinkingConfig = { thinkingLevel: options.thinkingLevel };
 
   const response = await ai.models.generateContent({
     model,

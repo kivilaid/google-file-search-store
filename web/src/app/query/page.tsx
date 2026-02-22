@@ -34,7 +34,14 @@ interface QueryHistoryItem {
 
 const MODELS = [
   { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash' },
-  { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro' },
+  { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro' },
+];
+
+const THINKING_LEVELS = [
+  { value: '', label: 'Off' },
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
 ];
 
 const RESPONSE_FORMATS = [
@@ -84,6 +91,7 @@ export default function QueryPage() {
   const [frequencyPenalty, setFrequencyPenalty] = useState('');
   const [seed, setSeed] = useState('');
   const [responseMimeType, setResponseMimeType] = useState('');
+  const [thinkingLevel, setThinkingLevel] = useState('');
 
   useEffect(() => {
     fetch('/api/stores')
@@ -155,6 +163,7 @@ export default function QueryPage() {
       if (frequencyPenalty) payload.frequencyPenalty = parseFloat(frequencyPenalty);
       if (seed) payload.seed = parseInt(seed, 10);
       if (responseMimeType) payload.responseMimeType = responseMimeType;
+      if (thinkingLevel) payload.thinkingLevel = thinkingLevel;
 
       const res = await fetch('/api/query', {
         method: 'POST',
@@ -236,8 +245,8 @@ export default function QueryPage() {
         )}
           </div>
 
-          {/* Model + filter row */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Model + thinking + filter row */}
+          <div className="grid grid-cols-3 gap-4">
         <div>
           <ParamLabel
             label="Model"
@@ -251,6 +260,23 @@ export default function QueryPage() {
             {MODELS.map((m) => (
               <option key={m.value} value={m.value}>
                 {m.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <ParamLabel
+            label="Thinking Level"
+            description="Enable extended thinking for more thorough reasoning. Higher levels use more tokens."
+          />
+          <select
+            value={thinkingLevel}
+            onChange={(e) => setThinkingLevel(e.target.value)}
+            className={`${inputClass} cursor-pointer`}
+          >
+            {THINKING_LEVELS.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
               </option>
             ))}
           </select>
