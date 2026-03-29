@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, User, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { Sparkles, User, FileText, ChevronDown, ChevronUp, Code } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 
@@ -11,17 +11,25 @@ export interface Citation {
   file_search_store?: string;
 }
 
+export interface ApiDebugInfo {
+  requestParams?: Record<string, unknown>;
+  responseInteraction?: Record<string, unknown>;
+}
+
 interface ChatMessageProps {
   role: 'user' | 'assistant';
   content: string;
   citations?: Citation[];
+  debug?: ApiDebugInfo;
   isStreaming?: boolean;
 }
 
-export default function ChatMessage({ role, content, citations, isStreaming = false }: ChatMessageProps) {
+export default function ChatMessage({ role, content, citations, debug, isStreaming = false }: ChatMessageProps) {
   const isUser = role === 'user';
   const [showCitations, setShowCitations] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
   const hasCitations = citations && citations.length > 0;
+  const hasDebug = debug && (debug.requestParams || debug.responseInteraction);
 
   return (
     <motion.div
@@ -68,45 +76,98 @@ export default function ChatMessage({ role, content, citations, isStreaming = fa
               )}
             </div>
 
-            {hasCitations && (
-              <div className="mt-3 pt-3 border-t border-[var(--border-subtle)]">
-                <button
-                  onClick={() => setShowCitations(!showCitations)}
-                  className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
-                >
-                  <FileText size={12} />
-                  {citations.length} source{citations.length > 1 ? 's' : ''}
-                  {showCitations ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                </button>
-                <AnimatePresence>
-                  {showCitations && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.15 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="mt-2 space-y-2">
-                        {citations.map((c, i) => (
-                          <div
-                            key={i}
-                            className="rounded-lg bg-[var(--bg-elevated)] px-3 py-2 text-xs"
-                          >
-                            {c.title && (
-                              <p className="font-medium text-[var(--text-primary)] mb-1">{c.title}</p>
-                            )}
-                            {c.text && (
-                              <p className="text-[var(--text-muted)] line-clamp-3">{c.text}</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+            {/* Action buttons row */}
+            {(hasCitations || hasDebug) && !isStreaming && (
+              <div className="mt-3 pt-3 border-t border-[var(--border-subtle)] flex items-center gap-3">
+                {hasCitations && (
+                  <button
+                    onClick={() => setShowCitations(!showCitations)}
+                    className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
+                  >
+                    <FileText size={12} />
+                    {citations.length} source{citations.length > 1 ? 's' : ''}
+                    {showCitations ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  </button>
+                )}
+                {hasDebug && (
+                  <button
+                    onClick={() => setShowDebug(!showDebug)}
+                    className={`flex items-center gap-1.5 text-xs transition-colors cursor-pointer ${
+                      showDebug ? 'text-[var(--amber)]' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+                    }`}
+                  >
+                    <Code size={12} />
+                    API
+                    {showDebug ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  </button>
+                )}
               </div>
             )}
+
+            {/* Citations panel */}
+            <AnimatePresence>
+              {showCitations && hasCitations && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="overflow-hidden"
+                >
+                  <div className="mt-2 space-y-2">
+                    {citations.map((c, i) => (
+                      <div
+                        key={i}
+                        className="rounded-lg bg-[var(--bg-elevated)] px-3 py-2 text-xs"
+                      >
+                        {c.title && (
+                          <p className="font-medium text-[var(--text-primary)] mb-1">{c.title}</p>
+                        )}
+                        {c.text && (
+                          <p className="text-[var(--text-muted)] line-clamp-3">{c.text}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Debug panel */}
+            <AnimatePresence>
+              {showDebug && hasDebug && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="overflow-hidden"
+                >
+                  <div className="mt-2 space-y-2">
+                    {debug.requestParams && (
+                      <div>
+                        <p className="text-[10px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">
+                          Request
+                        </p>
+                        <pre className="rounded-lg bg-[var(--bg-primary)] border border-[var(--border-subtle)] px-3 py-2 text-xs text-[var(--text-secondary)] overflow-x-auto font-mono max-h-64 overflow-y-auto">
+                          {JSON.stringify(debug.requestParams, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                    {debug.responseInteraction && (
+                      <div>
+                        <p className="text-[10px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">
+                          Response
+                        </p>
+                        <pre className="rounded-lg bg-[var(--bg-primary)] border border-[var(--border-subtle)] px-3 py-2 text-xs text-[var(--text-secondary)] overflow-x-auto font-mono max-h-64 overflow-y-auto">
+                          {JSON.stringify(debug.responseInteraction, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </>
         )}
       </div>

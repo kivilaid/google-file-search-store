@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { SquarePen, ChevronDown, PanelLeftClose, PanelLeft, Database } from 'lucide-react';
+import { SquarePen, ChevronDown, PanelLeftClose, PanelLeft, Database, Globe, Code, Link } from 'lucide-react';
 import ChatInput from '../../components/ChatInput';
 import ChatMessage from '../../components/ChatMessage';
-import type { Citation } from '../../components/ChatMessage';
+import type { Citation, ApiDebugInfo } from '../../components/ChatMessage';
 import ChatHistory from '../../components/ChatHistory';
 import type { ChatSession } from '../../components/ChatHistory';
 import { useToast } from '../../components/Toast';
@@ -15,6 +15,7 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   citations?: Citation[];
+  debug?: ApiDebugInfo;
 }
 
 interface Store {
@@ -63,6 +64,7 @@ export default function ChatPage() {
   const [stores, setStores] = useState<Store[]>([]);
   const [selectedStores, setSelectedStores] = useState<Set<string>>(new Set());
   const [showStoreSelector, setShowStoreSelector] = useState(false);
+  const [enabledTools, setEnabledTools] = useState<Set<string>>(new Set());
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -88,6 +90,15 @@ export default function ChatPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  const toggleTool = (tool: string) => {
+    setEnabledTools((prev) => {
+      const next = new Set(prev);
+      if (next.has(tool)) next.delete(tool);
+      else next.add(tool);
+      return next;
+    });
+  };
 
   const toggleStore = (name: string) => {
     setSelectedStores((prev) => {
@@ -148,13 +159,20 @@ export default function ChatPage() {
     let finalInteractionId = previousInteractionId;
     let finalMessages = newMessages;
     let pendingCitations: Citation[] = [];
+    let pendingDebug: ApiDebugInfo = {};
 
     try {
       const storeNames = Array.from(selectedStores);
+      const builtinTools = Array.from(enabledTools);
+      const systemInstruction = localStorage.getItem('chat-system-instruction') || undefined;
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input, model, previousInteractionId, storeNames: storeNames.length ? storeNames : undefined }),
+        body: JSON.stringify({
+          input, model, previousInteractionId, systemInstruction,
+          storeNames: storeNames.length ? storeNames : undefined,
+          builtinTools: builtinTools.length ? builtinTools : undefined,
+        }),
         signal: controller.signal,
       });
 
@@ -181,7 +199,18 @@ export default function ChatPage() {
           if (!part.startsWith('data: ')) continue;
           const data = JSON.parse(part.slice(6));
 
-          if (data.type === 'delta') {
+          if (data.type === 'request_params') {
+            pendingDebug = { ...pendingDebug, requestParams: data.params };
+            setMessages((prev) => {
+              const updated = [...prev];
+              const last = updated[updated.length - 1];
+              if (last.role === 'assistant') {
+                updated[updated.length - 1] = { ...last, debug: { ...pendingDebug } };
+              }
+              finalMessages = updated;
+              return updated;
+            });
+          } else if (data.type === 'delta') {
             setMessages((prev) => {
               const updated = [...prev];
               const last = updated[updated.length - 1];
@@ -205,6 +234,16 @@ export default function ChatPage() {
           } else if (data.type === 'complete') {
             finalInteractionId = data.interactionId;
             setPreviousInteractionId(data.interactionId);
+            pendingDebug = { ...pendingDebug, responseInteraction: data.interaction };
+            setMessages((prev) => {
+              const updated = [...prev];
+              const last = updated[updated.length - 1];
+              if (last.role === 'assistant') {
+                updated[updated.length - 1] = { ...last, debug: { ...pendingDebug } };
+              }
+              finalMessages = updated;
+              return updated;
+            });
           } else if (data.type === 'error') {
             throw new Error(data.message);
           }
@@ -340,6 +379,29 @@ export default function ChatPage() {
               <Database size={12} />
               {selectedStores.size > 0 ? `${selectedStores.size} store${selectedStores.size > 1 ? 's' : ''}` : 'Knowledge'}
             </button>
+            {[
+              { id: 'google_search', label: 'Search', icon: Globe },
+              { id: 'code_execution', label: 'Code', icon: Code },
+              { id: 'url_context', label: 'URL', icon: Link },
+            ].map(({ id, label, icon: Icon }) => {
+              const active = enabledTools.has(id);
+              return (
+                <button
+                  key={id}
+                  onClick={() => toggleTool(id)}
+                  className={`
+                    flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs border transition-all duration-150 cursor-pointer
+                    ${active
+                      ? 'border-[var(--amber)] bg-[var(--amber-glow)] text-[var(--amber)]'
+                      : 'border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]'
+                    }
+                  `}
+                >
+                  <Icon size={12} />
+                  {label}
+                </button>
+              );
+            })}
           </div>
           <button
             onClick={handleNewChat}
@@ -423,6 +485,7 @@ export default function ChatPage() {
                     role={msg.role}
                     content={msg.content}
                     citations={msg.citations}
+                    debug={msg.debug}
                     isStreaming={isStreaming && msg.id === messages[messages.length - 1]?.id && msg.role === 'assistant'}
                   />
                 ))}

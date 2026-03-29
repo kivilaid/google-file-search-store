@@ -3,7 +3,7 @@ import { getAI } from '../../../lib/client';
 
 export async function POST(request: Request) {
   try {
-    const { input, model, previousInteractionId, storeNames } = await request.json();
+    const { input, model, previousInteractionId, storeNames, systemInstruction, builtinTools } = await request.json();
 
     if (!input || typeof input !== 'string') {
       return Response.json({ error: 'input is required' }, { status: 400 });
@@ -18,14 +18,33 @@ export async function POST(request: Request) {
       previous_interaction_id: previousInteractionId || undefined,
     };
 
-    if (storeNames?.length) {
-      params.tools = [
-        {
-          type: 'file_search',
-          file_search_store_names: storeNames,
-        },
-      ];
+    if (systemInstruction) {
+      params.system_instruction = systemInstruction;
     }
+
+    const tools: Interactions.Tool[] = [];
+
+    if (storeNames?.length) {
+      tools.push({
+        type: 'file_search',
+        file_search_store_names: storeNames,
+      });
+    }
+
+    if (builtinTools?.length) {
+      for (const tool of builtinTools) {
+        if (['google_search', 'code_execution', 'url_context'].includes(tool)) {
+          tools.push({ type: tool } as Interactions.Tool);
+        }
+      }
+    }
+
+    if (tools.length > 0) {
+      params.tools = tools;
+    }
+
+    // Build a sanitized copy of params for the debug view (omit stream since it's internal)
+    const { stream: _stream, ...debugParams } = params;
 
     const stream = await ai.interactions.create(params);
 
@@ -34,6 +53,11 @@ export async function POST(request: Request) {
     const readable = new ReadableStream({
       async start(controller) {
         try {
+          // Emit the request params first
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ type: 'request_params', params: debugParams })}\n\n`)
+          );
+
           for await (const chunk of stream) {
             if (chunk.event_type === 'content.delta') {
               if (chunk.delta?.type === 'text' && 'text' in chunk.delta) {
@@ -55,6 +79,7 @@ export async function POST(request: Request) {
                     type: 'complete',
                     interactionId: chunk.interaction?.id,
                     totalTokens: chunk.interaction?.usage?.total_tokens,
+                    interaction: chunk.interaction,
                   })}\n\n`
                 )
               );
