@@ -54,7 +54,7 @@ const DEFAULT_MODEL = 'gemini-3-flash-preview';
 
 let _ai: GoogleGenAI | null = null;
 
-function getAI(): GoogleGenAI {
+export function getAI(): GoogleGenAI {
   if (_ai) return _ai;
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY environment variable is required');

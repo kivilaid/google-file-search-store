@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Database, Search, Settings, Menu, X } from 'lucide-react';
+import { Database, Search, Settings, Menu, X, MessageCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 
 const navItems = [
+  { href: '/chat', label: 'Chat', icon: MessageCircle },
   { href: '/stores', label: 'Stores', icon: Database },
   { href: '/query', label: 'Query', icon: Search },
   { href: '/settings', label: 'Settings', icon: Settings },
