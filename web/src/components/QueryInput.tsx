@@ -29,6 +29,7 @@ export default function QueryInput({ onSubmit, loading = false }: QueryInputProp
           }
         }}
         placeholder="Ask a question about your documents..."
+        aria-label="Query input"
         rows={4}
         className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl px-4 py-3 pr-14 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] resize-none focus:border-[var(--amber)] focus:shadow-[0_0_20px_var(--amber-glow)] focus:outline-none transition-all duration-200"
       />

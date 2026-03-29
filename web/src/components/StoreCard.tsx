@@ -33,6 +33,7 @@ export default function StoreCard({ displayName, name, createTime, documentCount
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
               className="p-1.5 rounded-md text-[var(--text-muted)] opacity-0 group-hover:opacity-100 hover:text-red-400 hover:bg-red-400/10 transition-all duration-200 cursor-pointer"
+              aria-label={`Delete ${displayName}`}
             >
               <Trash2 size={14} />
             </button>

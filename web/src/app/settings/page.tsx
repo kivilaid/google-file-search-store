@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { Key, Cpu, ExternalLink, Info } from 'lucide-react';
-import UsageStats from '../../components/UsageStats';
 
 const MODELS = [
   { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash' },
@@ -20,14 +19,6 @@ export default function SettingsPage() {
 
   // API key is server-side only; we show a masked placeholder
   const apiKeyDisplay = maskKey(typeof window !== 'undefined' ? undefined : undefined);
-
-  // Mock usage stats - in a real app, this would come from an API
-  const usageStats = {
-    apiCalls: 1247,
-    apiCallsChange: 12,
-    tokensUsed: 847000,
-    tokensChange: 8,
-  };
 
   return (
     <div className="max-w-2xl">
@@ -89,14 +80,6 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
-
-        {/* Usage statistics */}
-        <UsageStats
-          apiCalls={usageStats.apiCalls}
-          apiCallsChange={usageStats.apiCallsChange}
-          tokensUsed={usageStats.tokensUsed}
-          tokensChange={usageStats.tokensChange}
-        />
 
         {/* Documentation links */}
         <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5">

@@ -74,8 +74,8 @@ export default function MetadataEditor({ onChange }: MetadataEditorProps) {
             onChange={(e) => updateRow(i, 'type', e.target.value)}
             className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-lg px-2 py-2 text-xs font-mono text-[var(--text-secondary)] focus:border-[var(--amber)] focus:outline-none cursor-pointer transition-colors"
           >
-            <option value="string">str</option>
-            <option value="number">num</option>
+            <option value="string">Text</option>
+            <option value="number">Number</option>
           </select>
           <input
             type={row.type === 'number' ? 'number' : 'text'}

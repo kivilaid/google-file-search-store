@@ -13,7 +13,7 @@ interface SearchBarProps {
 
 export default function SearchBar({ value, onChange, sortBy, onSortChange }: SearchBarProps) {
   return (
-    <div className="flex gap-3 mb-10">
+    <div className="flex gap-3 mb-8">
       <div className="relative flex-1">
         <Search
           size={16}
@@ -23,7 +23,8 @@ export default function SearchBar({ value, onChange, sortBy, onSortChange }: Sea
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="🔍 Search stores..."
+          placeholder="Search stores..."
+          aria-label="Search stores"
           className="w-full bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-lg pl-11 pr-4 py-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] focus:border-[var(--amber)] focus:outline-none focus:shadow-[0_0_0_3px_var(--amber-glow)] transition-all"
         />
       </div>

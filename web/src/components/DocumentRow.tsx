@@ -112,6 +112,7 @@ export default function DocumentRow({ displayName, name, state, createTime, size
               <button
                 onClick={(e) => { e.stopPropagation(); onDelete(); }}
                 className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[rgba(239,68,68,0.1)] transition-all duration-150 cursor-pointer"
+                aria-label={`Delete ${displayName || shortName}`}
               >
                 <Trash2 size={14} />
               </button>

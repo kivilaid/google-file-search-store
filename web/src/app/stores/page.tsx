@@ -8,6 +8,7 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import Modal from '../../components/Modal';
 import StatsBar from '../../components/StatsBar';
 import SearchBar from '../../components/SearchBar';
+import { useToast } from '../../components/Toast';
 import { formatFileSize } from '../../lib/utils';
 
 interface Store {
@@ -21,6 +22,7 @@ type StoreSortOption = 'all' | 'recent' | 'most_documents';
 
 export default function StoresPage() {
   const router = useRouter();
+  const toast = useToast();
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -34,14 +36,15 @@ export default function StoresPage() {
   const fetchStores = useCallback(async () => {
     try {
       const res = await fetch('/api/stores');
+      if (!res.ok) throw new Error('Failed to load stores');
       const data = await res.json();
       setStores(data.stores ?? []);
-    } catch {
-      // silent
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to load stores');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     fetchStores();
@@ -51,7 +54,6 @@ export default function StoresPage() {
   const stats = useMemo(() => {
     const totalStores = stores.length;
     const totalDocuments = stores.reduce((sum, store) => sum + (store.documentCount || 0), 0);
-    // Estimate storage (assuming avg 100KB per doc)
     const estimatedBytes = totalDocuments * 100 * 1024;
     const totalStorage = formatFileSize(estimatedBytes);
     return { totalStores, totalDocuments, totalStorage };
@@ -61,7 +63,6 @@ export default function StoresPage() {
   const filteredStores = useMemo(() => {
     let filtered = stores;
 
-    // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -71,7 +72,6 @@ export default function StoresPage() {
       );
     }
 
-    // Apply sorting
     const sorted = [...filtered];
     if (sortBy === 'recent') {
       sorted.sort((a, b) => {
@@ -95,11 +95,16 @@ export default function StoresPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ displayName: newName.trim() }),
       });
-      if (res.ok) {
-        setModalOpen(false);
-        setNewName('');
-        await fetchStores();
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to create store');
       }
+      setModalOpen(false);
+      setNewName('');
+      toast.success('Store created successfully');
+      await fetchStores();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create store');
     } finally {
       setCreating(false);
     }
@@ -111,10 +116,15 @@ export default function StoresPage() {
     setDeleting(true);
     try {
       const res = await fetch(`/api/stores/${id}?force=true`, { method: 'DELETE' });
-      if (res.ok) {
-        setDeleteTarget(null);
-        await fetchStores();
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to delete store');
       }
+      setDeleteTarget(null);
+      toast.success('Store deleted successfully');
+      await fetchStores();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete store');
     } finally {
       setDeleting(false);
     }
@@ -136,7 +146,7 @@ export default function StoresPage() {
       />
 
       {/* Page Header */}
-      <div className="flex items-center justify-between mb-10 pb-8 border-b border-[var(--border-subtle)]">
+      <div className="flex items-center justify-between mb-8 pb-8 border-b border-[var(--border-subtle)]">
         <div>
           <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2 tracking-tight">Your Stores</h1>
           <p className="text-sm text-[var(--text-muted)]">Manage file search stores and documents</p>
@@ -159,7 +169,7 @@ export default function StoresPage() {
       />
 
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <LoadingSkeleton variant="card" count={6} />
         </div>
       ) : filteredStores.length === 0 ? (

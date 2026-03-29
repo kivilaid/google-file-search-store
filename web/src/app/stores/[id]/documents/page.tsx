@@ -8,6 +8,7 @@ import FileUploadZone from '../../../../components/FileUploadZone';
 import MetadataEditor from '../../../../components/MetadataEditor';
 import LoadingSkeleton from '../../../../components/LoadingSkeleton';
 import Modal from '../../../../components/Modal';
+import { useToast } from '../../../../components/Toast';
 
 interface Document {
   name: string;
@@ -23,6 +24,7 @@ interface Document {
 export default function DocumentsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const toast = useToast();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -32,18 +34,21 @@ export default function DocumentsPage({ params }: { params: Promise<{ id: string
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deletingStore, setDeletingStore] = useState(false);
+  const [deleteDocTarget, setDeleteDocTarget] = useState<string | null>(null);
+  const [deletingDoc, setDeletingDoc] = useState(false);
 
   const fetchDocuments = useCallback(async () => {
     try {
       const res = await fetch(`/api/stores/${id}/documents`);
+      if (!res.ok) throw new Error('Failed to load documents');
       const data = await res.json();
       setDocuments(data.documents ?? []);
-    } catch {
-      // silent
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to load documents');
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, toast]);
 
   useEffect(() => {
     fetchDocuments();
@@ -65,10 +70,15 @@ export default function DocumentsPage({ params }: { params: Promise<{ id: string
       if (Object.keys(metadata).length > 0) formData.append('metadata', JSON.stringify(metadata));
 
       const res = await fetch(`/api/stores/${id}/documents`, { method: 'POST', body: formData });
-      if (res.ok) {
-        setSelectedFile(null);
-        await fetchDocuments();
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to upload document');
       }
+      setSelectedFile(null);
+      toast.success(`Uploaded ${selectedFile.name}`);
+      await fetchDocuments();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to upload document');
     } finally {
       setUploading(false);
     }
@@ -79,22 +89,37 @@ export default function DocumentsPage({ params }: { params: Promise<{ id: string
     setDeletingStore(true);
     try {
       const res = await fetch(`/api/stores/${id}?force=true`, { method: 'DELETE' });
-      if (res.ok) {
-        router.push('/stores');
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to delete store');
       }
+      toast.success('Store deleted successfully');
+      router.push('/stores');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete store');
     } finally {
       setDeletingStore(false);
     }
   };
 
-  const handleDelete = async (docName: string) => {
-    const docId = docName.split('/').pop();
+  const handleDeleteDoc = async () => {
+    if (!deleteDocTarget || deletingDoc) return;
+    const docId = deleteDocTarget.split('/').pop();
     if (!docId) return;
+    setDeletingDoc(true);
     try {
-      await fetch(`/api/documents/${docId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/documents/${docId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to delete document');
+      }
+      setDeleteDocTarget(null);
+      toast.success('Document deleted');
       await fetchDocuments();
-    } catch {
-      // silent
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete document');
+    } finally {
+      setDeletingDoc(false);
     }
   };
 
@@ -104,6 +129,7 @@ export default function DocumentsPage({ params }: { params: Promise<{ id: string
         <button
           onClick={() => router.push('/stores')}
           className="p-2 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer"
+          aria-label="Back to stores"
         >
           <ArrowLeft size={18} />
         </button>
@@ -115,12 +141,14 @@ export default function DocumentsPage({ params }: { params: Promise<{ id: string
           <button
             onClick={() => { setLoading(true); fetchDocuments(); }}
             className="p-2 rounded-lg text-[var(--text-muted)] hover:text-[var(--amber)] hover:bg-[var(--amber-glow)] transition-colors cursor-pointer"
+            aria-label="Refresh documents"
           >
             <RefreshCw size={16} />
           </button>
           <button
             onClick={() => setDeleteModalOpen(true)}
             className="p-2 rounded-lg text-[var(--text-muted)] hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer"
+            aria-label="Delete store"
           >
             <Trash2 size={16} />
           </button>
@@ -149,7 +177,7 @@ export default function DocumentsPage({ params }: { params: Promise<{ id: string
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5 uppercase tracking-wider">
                   Max Tokens/Chunk
@@ -159,7 +187,7 @@ export default function DocumentsPage({ params }: { params: Promise<{ id: string
                   value={maxTokens}
                   onChange={(e) => setMaxTokens(e.target.value)}
                   placeholder="256"
-                  className="w-full bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--amber)] focus:outline-none transition-colors"
+                  className="w-full bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--amber)] focus:outline-none transition-colors"
                 />
               </div>
               <div>
@@ -171,7 +199,7 @@ export default function DocumentsPage({ params }: { params: Promise<{ id: string
                   value={overlap}
                   onChange={(e) => setOverlap(e.target.value)}
                   placeholder="64"
-                  className="w-full bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--amber)] focus:outline-none transition-colors"
+                  className="w-full bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--amber)] focus:outline-none transition-colors"
                 />
               </div>
             </div>
@@ -226,7 +254,7 @@ export default function DocumentsPage({ params }: { params: Promise<{ id: string
                   customMetadata={doc.customMetadata}
                   updateTime={doc.updateTime}
                   index={i}
-                  onDelete={() => handleDelete(doc.name)}
+                  onDelete={() => setDeleteDocTarget(doc.name)}
                 />
               ))}
             </tbody>
@@ -234,6 +262,7 @@ export default function DocumentsPage({ params }: { params: Promise<{ id: string
         </div>
       )}
 
+      {/* Delete store modal */}
       <Modal
         open={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
@@ -258,6 +287,34 @@ export default function DocumentsPage({ params }: { params: Promise<{ id: string
       >
         <p className="text-sm text-[var(--text-secondary)]">
           Are you sure you want to delete this store and all its documents? This action cannot be undone.
+        </p>
+      </Modal>
+
+      {/* Delete document confirmation modal */}
+      <Modal
+        open={!!deleteDocTarget}
+        onClose={() => setDeleteDocTarget(null)}
+        title="Delete Document"
+        actions={
+          <>
+            <button
+              onClick={() => setDeleteDocTarget(null)}
+              className="px-4 py-2 rounded-lg text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDeleteDoc}
+              disabled={deletingDoc}
+              className="px-4 py-2 rounded-lg text-sm font-semibold bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            >
+              {deletingDoc ? 'Deleting...' : 'Delete'}
+            </button>
+          </>
+        }
+      >
+        <p className="text-sm text-[var(--text-secondary)]">
+          Are you sure you want to delete this document? This action cannot be undone.
         </p>
       </Modal>
     </div>

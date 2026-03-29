@@ -1,6 +1,6 @@
 'use client';
 
-import { Clock, ChevronRight } from 'lucide-react';
+import { Clock, ChevronRight, Trash2 } from 'lucide-react';
 import { formatRelativeTime } from '../lib/utils';
 
 interface QueryHistoryItem {
@@ -13,9 +13,10 @@ interface QueryHistoryItem {
 interface QueryHistoryProps {
   queries: QueryHistoryItem[];
   onQuerySelect: (query: string) => void;
+  onClearAll?: () => void;
 }
 
-export default function QueryHistory({ queries, onQuerySelect }: QueryHistoryProps) {
+export default function QueryHistory({ queries, onQuerySelect, onClearAll }: QueryHistoryProps) {
   if (queries.length === 0) {
     return (
       <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-8 text-center">
@@ -28,9 +29,21 @@ export default function QueryHistory({ queries, onQuerySelect }: QueryHistoryPro
 
   return (
     <div className="space-y-2">
-      <h3 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-3">
-        Recent Queries
-      </h3>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
+          Recent Queries
+        </h3>
+        {onClearAll && (
+          <button
+            onClick={onClearAll}
+            className="inline-flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-[var(--danger)] transition-colors cursor-pointer"
+            aria-label="Clear all query history"
+          >
+            <Trash2 size={11} />
+            Clear
+          </button>
+        )}
+      </div>
       {queries.map((item) => (
         <button
           key={item.id}

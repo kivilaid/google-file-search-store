@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useId } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
 
@@ -13,6 +13,8 @@ interface ModalProps {
 }
 
 export default function Modal({ open, onClose, title, children, actions }: ModalProps) {
+  const titleId = useId();
+
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
@@ -31,6 +33,9 @@ export default function Modal({ open, onClose, title, children, actions }: Modal
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
           className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
         >
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
@@ -42,10 +47,11 @@ export default function Modal({ open, onClose, title, children, actions }: Modal
             className="relative w-full max-w-md bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl shadow-2xl"
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-subtle)]">
-              <h2 className="text-sm font-semibold text-[var(--text-primary)]">{title}</h2>
+              <h2 id={titleId} className="text-sm font-semibold text-[var(--text-primary)]">{title}</h2>
               <button
                 onClick={onClose}
                 className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--amber)] hover:bg-[var(--amber-glow)] transition-colors cursor-pointer"
+                aria-label="Close dialog"
               >
                 <X size={16} />
               </button>

@@ -66,7 +66,7 @@ export default function FileUploadZone({ onFileSelect, uploading = false }: File
             {uploading ? 'Uploading...' : 'Drop a file here or click to browse'}
           </p>
           <p className="text-xs text-[var(--text-muted)] mt-1">
-            PDF, TXT, HTML, CSV, and more
+            PDF, TXT, HTML, CSV, JSON, XLSX, DOCX, images
           </p>
         </div>
       </div>

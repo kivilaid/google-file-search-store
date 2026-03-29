@@ -7,6 +7,7 @@ import QueryInput from '../../components/QueryInput';
 import CitationCard from '../../components/CitationCard';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import QueryHistory from '../../components/QueryHistory';
+import { useToast } from '../../components/Toast';
 
 interface Store {
   name: string;
@@ -65,10 +66,11 @@ function ParamLabel({ label, description }: { label: string; description: string
 }
 
 const inputClass =
-  'w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--amber)] focus:outline-none transition-colors';
+  'w-full bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--amber)] focus:outline-none transition-colors';
 const monoInputClass = `${inputClass} font-mono`;
 
 export default function QueryPage() {
+  const toast = useToast();
   const [stores, setStores] = useState<Store[]>([]);
   const [selectedStores, setSelectedStores] = useState<Set<string>>(new Set());
   const [model, setModel] = useState(MODELS[0].value);
@@ -98,7 +100,9 @@ export default function QueryPage() {
     fetch('/api/stores')
       .then((r) => r.json())
       .then((data) => setStores(data.stores ?? []))
-      .catch(() => {})
+      .catch(() => {
+        toast.error('Failed to load stores');
+      })
       .finally(() => setStoresLoading(false));
 
     // Load query history from localStorage
@@ -110,7 +114,7 @@ export default function QueryPage() {
         // ignore
       }
     }
-  }, []);
+  }, [toast]);
 
   const toggleStore = useCallback((name: string) => {
     setSelectedStores((prev) => {
@@ -131,7 +135,7 @@ export default function QueryPage() {
       };
 
       setQueryHistory((prev) => {
-        const updated = [historyItem, ...prev].slice(0, 10); // Keep last 10 queries
+        const updated = [historyItem, ...prev].slice(0, 10);
         localStorage.setItem('queryHistory', JSON.stringify(updated));
         return updated;
       });
@@ -174,7 +178,11 @@ export default function QueryPage() {
       const data = await res.json();
       if (res.ok) {
         setResult({ text: data.text ?? '', citations: data.citations ?? [] });
+      } else {
+        toast.error(data.error || 'Query failed');
       }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Query failed');
     } finally {
       setLoading(false);
     }
@@ -187,6 +195,11 @@ export default function QueryPage() {
     },
     [handleQuery]
   );
+
+  const handleClearHistory = useCallback(() => {
+    setQueryHistory([]);
+    localStorage.removeItem('queryHistory');
+  }, []);
 
   return (
     <div className="max-w-5xl">
@@ -247,7 +260,7 @@ export default function QueryPage() {
           </div>
 
           {/* Model + thinking + filter row */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <ParamLabel
             label="Model"
@@ -565,7 +578,7 @@ export default function QueryPage() {
 
         {/* Query history sidebar */}
         <div className={`lg:col-span-1 ${showHistory ? 'block' : 'hidden lg:block'}`}>
-          <QueryHistory queries={queryHistory} onQuerySelect={handleHistorySelect} />
+          <QueryHistory queries={queryHistory} onQuerySelect={handleHistorySelect} onClearAll={handleClearHistory} />
         </div>
       </div>
     </div>

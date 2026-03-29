@@ -25,7 +25,7 @@ export default function CitationCard({ index, title, uri, snippet, startIndex, e
           {index}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm text-[var(--text-primary)] truncate">
+          <p className="text-sm text-[var(--text-primary)] truncate" title={title || uri}>
             {title || uri || `Citation ${index}`}
           </p>
         </div>
@@ -36,6 +36,7 @@ export default function CitationCard({ index, title, uri, snippet, startIndex, e
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
             className="shrink-0 p-1 text-[var(--text-muted)] hover:text-[var(--amber)] transition-colors"
+            aria-label={`Open source: ${title || uri}`}
           >
             <ExternalLink size={13} />
           </a>
