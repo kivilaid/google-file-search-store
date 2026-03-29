@@ -26,6 +26,7 @@ interface Store {
 const MODELS = [
   { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash' },
   { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro' },
+  { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite' },
 ];
 
 const STORAGE_KEY = 'chat-sessions';
@@ -64,7 +65,7 @@ export default function ChatPage() {
   const [stores, setStores] = useState<Store[]>([]);
   const [selectedStores, setSelectedStores] = useState<Set<string>>(new Set());
   const [showStoreSelector, setShowStoreSelector] = useState(false);
-  const [enabledTools, setEnabledTools] = useState<Set<string>>(new Set());
+  const [enabledTools, setEnabledTools] = useState<Set<string>>(new Set(['google_search', 'url_context']));
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -94,8 +95,15 @@ export default function ChatPage() {
   const toggleTool = (tool: string) => {
     setEnabledTools((prev) => {
       const next = new Set(prev);
-      if (next.has(tool)) next.delete(tool);
-      else next.add(tool);
+      if (next.has(tool)) {
+        next.delete(tool);
+      } else {
+        next.add(tool);
+        // google_search and file_search (stores) are mutually exclusive
+        if (tool === 'google_search' && selectedStores.size > 0) {
+          setSelectedStores(new Set());
+        }
+      }
       return next;
     });
   };
@@ -103,8 +111,17 @@ export default function ChatPage() {
   const toggleStore = (name: string) => {
     setSelectedStores((prev) => {
       const next = new Set(prev);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
+      if (next.has(name)) {
+        next.delete(name);
+      } else {
+        next.add(name);
+        // file_search and google_search are mutually exclusive
+        setEnabledTools((prev) => {
+          const updated = new Set(prev);
+          updated.delete('google_search');
+          return updated;
+        });
+      }
       return next;
     });
   };
@@ -172,6 +189,7 @@ export default function ChatPage() {
           input, model, previousInteractionId, systemInstruction,
           storeNames: storeNames.length ? storeNames : undefined,
           builtinTools: builtinTools.length ? builtinTools : undefined,
+          thinkingLevel: 'high',
         }),
         signal: controller.signal,
       });

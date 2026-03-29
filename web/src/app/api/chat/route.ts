@@ -3,7 +3,7 @@ import { getAI } from '../../../lib/client';
 
 export async function POST(request: Request) {
   try {
-    const { input, model, previousInteractionId, storeNames, systemInstruction, builtinTools } = await request.json();
+    const { input, model, previousInteractionId, storeNames, systemInstruction, builtinTools, thinkingLevel } = await request.json();
 
     if (!input || typeof input !== 'string') {
       return Response.json({ error: 'input is required' }, { status: 400 });
@@ -20,6 +20,13 @@ export async function POST(request: Request) {
 
     if (systemInstruction) {
       params.system_instruction = systemInstruction;
+    }
+
+    if (thinkingLevel) {
+      (params as Record<string, unknown>).generation_config = {
+        thinking_level: thinkingLevel.toLowerCase(),
+        thinking_summaries: 'auto',
+      };
     }
 
     const tools: Interactions.Tool[] = [];

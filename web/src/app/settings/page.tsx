@@ -6,6 +6,7 @@ import { Key, Cpu, ExternalLink, Info, MessageCircle } from 'lucide-react';
 const MODELS = [
   { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash' },
   { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro' },
+  { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite' },
 ];
 
 function maskKey(key: string | undefined): string {
