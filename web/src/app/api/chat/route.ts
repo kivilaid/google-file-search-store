@@ -3,7 +3,7 @@ import { getAI } from '../../../lib/client';
 
 export async function POST(request: Request) {
   try {
-    const { input, model, previousInteractionId } = await request.json();
+    const { input, model, previousInteractionId, storeNames } = await request.json();
 
     if (!input || typeof input !== 'string') {
       return Response.json({ error: 'input is required' }, { status: 400 });
@@ -18,6 +18,15 @@ export async function POST(request: Request) {
       previous_interaction_id: previousInteractionId || undefined,
     };
 
+    if (storeNames?.length) {
+      params.tools = [
+        {
+          type: 'file_search',
+          file_search_store_names: storeNames,
+        },
+      ];
+    }
+
     const stream = await ai.interactions.create(params);
 
     const encoder = new TextEncoder();
@@ -31,6 +40,13 @@ export async function POST(request: Request) {
                 controller.enqueue(
                   encoder.encode(`data: ${JSON.stringify({ type: 'delta', text: chunk.delta.text })}\n\n`)
                 );
+              } else if (chunk.delta?.type === 'file_search_result' && 'result' in chunk.delta) {
+                const results = (chunk.delta as { result?: { title?: string; text?: string; file_search_store?: string }[] }).result;
+                if (results?.length) {
+                  controller.enqueue(
+                    encoder.encode(`data: ${JSON.stringify({ type: 'citations', citations: results })}\n\n`)
+                  );
+                }
               }
             } else if (chunk.event_type === 'interaction.complete') {
               controller.enqueue(

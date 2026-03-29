@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { SquarePen, ChevronDown, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { SquarePen, ChevronDown, PanelLeftClose, PanelLeft, Database } from 'lucide-react';
 import ChatInput from '../../components/ChatInput';
 import ChatMessage from '../../components/ChatMessage';
+import type { Citation } from '../../components/ChatMessage';
 import ChatHistory from '../../components/ChatHistory';
 import type { ChatSession } from '../../components/ChatHistory';
 import { useToast } from '../../components/Toast';
@@ -13,6 +14,12 @@ interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  citations?: Citation[];
+}
+
+interface Store {
+  name: string;
+  displayName: string;
 }
 
 const MODELS = [
@@ -53,6 +60,9 @@ export default function ChatPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [model, setModel] = useState('gemini-3-flash-preview');
   const [showHistory, setShowHistory] = useState(true);
+  const [stores, setStores] = useState<Store[]>([]);
+  const [selectedStores, setSelectedStores] = useState<Set<string>>(new Set());
+  const [showStoreSelector, setShowStoreSelector] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -63,6 +73,14 @@ export default function ChatPage() {
     setSessions(loadSessions());
   }, []);
 
+  // Fetch stores
+  useEffect(() => {
+    fetch('/api/stores')
+      .then((r) => r.json())
+      .then((data) => setStores(data.stores || []))
+      .catch(() => {});
+  }, []);
+
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
@@ -70,6 +88,15 @@ export default function ChatPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  const toggleStore = (name: string) => {
+    setSelectedStores((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
 
   // Persist current session to localStorage
   const persistSession = useCallback(
@@ -120,12 +147,14 @@ export default function ChatPage() {
 
     let finalInteractionId = previousInteractionId;
     let finalMessages = newMessages;
+    let pendingCitations: Citation[] = [];
 
     try {
+      const storeNames = Array.from(selectedStores);
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input, model, previousInteractionId }),
+        body: JSON.stringify({ input, model, previousInteractionId, storeNames: storeNames.length ? storeNames : undefined }),
         signal: controller.signal,
       });
 
@@ -158,6 +187,17 @@ export default function ChatPage() {
               const last = updated[updated.length - 1];
               if (last.role === 'assistant') {
                 updated[updated.length - 1] = { ...last, content: last.content + data.text };
+              }
+              finalMessages = updated;
+              return updated;
+            });
+          } else if (data.type === 'citations') {
+            pendingCitations = [...pendingCitations, ...data.citations];
+            setMessages((prev) => {
+              const updated = [...prev];
+              const last = updated[updated.length - 1];
+              if (last.role === 'assistant') {
+                updated[updated.length - 1] = { ...last, citations: pendingCitations };
               }
               finalMessages = updated;
               return updated;
@@ -258,7 +298,7 @@ export default function ChatPage() {
       {/* Main chat area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 shrink-0 px-2">
+        <div className="flex items-center justify-between pb-3 shrink-0 px-2">
           <div className="flex items-center gap-3">
             {!showHistory && (
               <button
@@ -287,6 +327,19 @@ export default function ChatPage() {
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none"
               />
             </div>
+            <button
+              onClick={() => setShowStoreSelector(!showStoreSelector)}
+              className={`
+                flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border transition-all duration-150 cursor-pointer
+                ${selectedStores.size > 0
+                  ? 'border-[var(--amber)] bg-[var(--amber-glow)] text-[var(--amber)]'
+                  : 'border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]'
+                }
+              `}
+            >
+              <Database size={12} />
+              {selectedStores.size > 0 ? `${selectedStores.size} store${selectedStores.size > 1 ? 's' : ''}` : 'Knowledge'}
+            </button>
           </div>
           <button
             onClick={handleNewChat}
@@ -296,6 +349,49 @@ export default function ChatPage() {
             New Chat
           </button>
         </div>
+
+        {/* Store selector dropdown */}
+        <AnimatePresence>
+          {showStoreSelector && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="overflow-hidden px-2 shrink-0"
+            >
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 mb-3">
+                <p className="text-xs text-[var(--text-muted)] mb-2">
+                  Select stores to use as knowledge source:
+                </p>
+                {stores.length === 0 ? (
+                  <p className="text-xs text-[var(--text-muted)]">No stores available.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {stores.map((store) => {
+                      const selected = selectedStores.has(store.name);
+                      return (
+                        <button
+                          key={store.name}
+                          onClick={() => toggleStore(store.name)}
+                          className={`
+                            px-2.5 py-1 rounded-lg text-xs border transition-all duration-150 cursor-pointer
+                            ${selected
+                              ? 'border-[var(--amber)] bg-[var(--amber-glow)] text-[var(--amber)] shadow-[0_0_12px_var(--amber-glow)]'
+                              : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:border-[var(--border-default)]'
+                            }
+                          `}
+                        >
+                          {store.displayName}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Messages */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0">
@@ -313,7 +409,8 @@ export default function ChatPage() {
                   How can I help you?
                 </h2>
                 <p className="text-sm text-[var(--text-muted)] max-w-sm">
-                  Start a conversation with Gemini. Your chat history is maintained across messages.
+                  Start a conversation with Gemini.
+                  {stores.length > 0 && ' Select stores above to ground responses in your documents.'}
                 </p>
               </motion.div>
             </div>
@@ -325,6 +422,7 @@ export default function ChatPage() {
                     key={msg.id}
                     role={msg.role}
                     content={msg.content}
+                    citations={msg.citations}
                     isStreaming={isStreaming && msg.id === messages[messages.length - 1]?.id && msg.role === 'assistant'}
                   />
                 ))}
